@@ -1,0 +1,12 @@
+from django.contrib import admin
+from .models import Category, Product
+@admin.register(Category) # decorator form of admin.site.register(...)
+class CategoryAdmin(admin.ModelAdmin):
+ list_display = ["name", "slug"]
+ prepopulated_fields = {"slug": ("name",)} # auto-fills slug while typing name
+@admin.register(Product)
+class ProductAdmin(admin.ModelAdmin):
+ list_display = ["name", "category", "price", "stock", "is_active"]
+ list_filter = ["category", "is_active"]
+ prepopulated_fields = {"slug": ("name",)}
+
