@@ -6,11 +6,11 @@ def product_list(request, category_slug=None):
  products = Product.objects.filter(is_active=True).select_related("category")
  if category_slug: # same view, two URLs
   category = get_object_or_404(Category, slug=category_slug)
- products = products.filter(category=category)
+  products = products.filter(category=category)
  context = {
- "category": category,
- "categories": categories,
- "products": products,
+  "category": category,
+  "categories": categories,
+  "products": products,
  }
  return render(request, "store/product_list.html", context)
 def product_detail(request, slug):
