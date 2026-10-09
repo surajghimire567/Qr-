@@ -1,0 +1,12 @@
+<article class="card">
+ <a href="{{ product.get_absolute_url }}">
+ {% if product.image %}
+ <img src="{{ product.image.url }}" alt="{{ product.name }}">
+ {% else %}
+ <div class="no-image">No image</div>
+ {% endif %}
+ <h3>{{ product.name }}</h3>
+ </a>
+ <p class="price">Rs {{ product.price }}</p>
+ {% if not product.in_stock %}<p class="badge">Out of stock</p>{% endif %}
+</article>

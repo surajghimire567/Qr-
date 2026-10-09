@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ category.name|default:"All products" }} | Django Shop{% endblock %}
+{% block content %}
+<div class="layout">
+ <aside class="sidebar">
+ <h3>Categories</h3>
+ <ul>
+ <li {% if not category %}class="active"{% endif %}>
+ <a href="{% url 'store:product_list' %}">All</a>
+ </li>
+ {% for c in categories %}
+ <li {% if category.slug == c.slug %}class="active"{% endif %}>
+ <a href="{{ c.get_absolute_url }}">{{ c.name }}</a>
+ </li>
+ {% endfor %}
+ </ul>
+ </aside>
+ <section>
+ <h1>{{ category.name|default:"All products" }}</h1>
+ <div class="grid">
+ {% for product in products %}
+ {% include "store/_product_card.html" %}
+ {% empty %}
+ <p>No products in this category yet.</p>
+ {% endfor %}
+ </div>
+ </section>
+</div>
+{% endblock %}

@@ -17,6 +17,7 @@ INSTALLED_APPS = [
     # local apps
     "store",
     "orders",
+    # "score",  # uncomment if `score` is a Django app folder in your project
 ]
 
 MIDDLEWARE = [
@@ -29,13 +30,13 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "config.urls"  # NEW — fixes the runserver crash
+ROOT_URLCONF = "config.urls"
 
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
-        "APP_DIRS": True,
+        "DIRS": [BASE_DIR / "templates"],  # project-level templates (base.html)
+        "APP_DIRS": True,  # also search <app>/templates/
         "OPTIONS": {
             "context_processors": [
                 "django.template.context_processors.debug",
@@ -47,7 +48,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "config.wsgi.application"  # NEW — needed for runserver
+WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     "default": {
@@ -56,20 +57,22 @@ DATABASES = {
     }
 }
 
-AUTH_PASSWORD_VALIDATORS = [  # NEW — needed for createsuperuser / auth app
+AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
     {"NAME": "django.contrib.auth.password_validation.CommonPasswordValidator"},
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
-LANGUAGE_CODE = "en-us"  # NEW — default locale setting
+LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Asia/Kathmandu"
-USE_I18N = True  # NEW — enables translation framework (harmless if unused)
+USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATICFILES_DIRS = [BASE_DIR / "static"]  # project-level CSS/JS
+
 MEDIA_URL = "/media/"  # URL prefix for uploaded files
 MEDIA_ROOT = BASE_DIR / "media"  # folder on disk for uploaded files
 
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"  # NEW — default PK type for models
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

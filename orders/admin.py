@@ -7,4 +7,4 @@ class OrderItemInline(admin.TabularInline): # edit items inside the order page
 class OrderAdmin(admin.ModelAdmin):
  list_display = ["id", "user", "status", "total_amount", "created_at"]
  list_filter = ["status"]
- lines = [OrderItemInline]
+ inlines = [OrderItemInline]

@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }} | Django Shop{% endblock %}
+{% block content %}
+<p class="breadcrumb">
+ <a href="{% url 'store:product_list' %}">All</a> /
+ <a href="{{ product.category.get_absolute_url }}">{{ product.category.name }}</a> /
+ {{ product.name }}
+</p>
+<div class="detail">
+ {% if product.image %}
+ <img src="{{ product.image.url }}" alt="{{ product.name }}">
+ {% else %}
+ <div class="no-image big">No image</div>
+ {% endif %}
+ <div>
+ <h1>{{ product.name }}</h1>
+ <p class="price">Rs {{ product.price }}</p>
+ {% if product.in_stock %}
+ <p>In stock ({{ product.stock }} left)</p>
+ {% else %}
+ <p class="badge">Out of stock</p>
+ {% endif %}
+ <p>{{ product.description|linebreaks }}</p>
+ <button disabled>Add to cart (Day 3)</button>
+ </div>
+</div>
+{% if related %}
+ <h2>More in {{ product.category.name }}</h2>
+ <div class="grid">
+ {% for product in related %}
+ {% include "store/_product_card.html" %}
+ {% endfor %}
+ </div>
+{% endif %}
+{% endblock %}
