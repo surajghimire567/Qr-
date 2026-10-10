@@ -17,8 +17,14 @@ INSTALLED_APPS = [
     # local apps
     "store",
     "orders",
-    # "score",  # uncomment if `score` is a Django app folder in your project
+    "cart",
+    
+
+    
+
 ]
+CART_SESSION_ID = "cart" # the key inside request.session
+
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
