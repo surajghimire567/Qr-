@@ -1,5 +1,6 @@
 from django.shortcuts import get_object_or_404, render
 from .models import Category, Product
+from cart.forms import CartAddProductForm
 def product_list(request, category_slug=None):
  category = None
  categories = Category.objects.all()
@@ -24,4 +25,6 @@ def product_detail(request, slug):
  .exclude(pk=product.pk)[:4]
  )
  return render(request, "store/product_detail.html",
- {"product": product, "related": related})
+ {"product": product,
+   "related": related,
+   "cart_product_form": CartAddProductForm(), })

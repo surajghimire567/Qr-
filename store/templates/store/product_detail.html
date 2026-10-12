@@ -21,7 +21,19 @@
  <p class="badge">Out of stock</p>
  {% endif %}
  <p>{{ product.description|linebreaks }}</p>
- <button disabled>Add to cart (Day 3)</button>
+Reference — store/templates/store/product_detail.html (replace the disabled button)
+{% if product.in_stock %}
+<form action="{% url 'cart:cart_add' product.id %}" method="post" class="add-form">
+{% csrf_token %}
+<label for="id_quantity">Qty</label>
+{{ cart_product_form.quantity }}
+{{ cart_product_form.override }}
+<button type="submit">Add to cart</button>
+</form>
+{% else %}
+<button disabled>Out of stock</button>
+{% endif %}
+
  </div>
 </div>
 {% if related %}

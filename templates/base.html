@@ -11,13 +11,20 @@
  <header class="site-header">
  <a href="{% url 'store:product_list' %}" class="logo">Django Shop</a>
  <nav>
- <a href="{% url 'store:product_list' %}">All products</a>
- <span class="muted">Cart (Day 3)</span>
- </nav>
- </header>
- <main class="container">
- {% block content %}{% endblock %}
- </main>
- <footer class="site-footer">Built with Django &middot; Day 2</footer>
+<a href="{% url 'store:product_list' %}">All products</a>
+<a href="{% url 'cart:cart_detail' %}">Cart ({{ cart_count }})</a> {# was the Day 2 placeholder #}
+</nav>
+...
+<main class="container">
+{% if messages %}
+<ul class="messages">
+{% for message in messages %}
+<li class="msg-{{ message.tags }}">{{ message }}</li>
+{% endfor %}
+</ul>
+{% endif %}
+{% block content %}{% endblock %}
+</main>
+<footer class="site-footer">Built with Django &middot; Day 3</footer>
 </body>
 </html>

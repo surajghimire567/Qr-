@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Your cart | Django Shop{% endblock %}
+{% block content %}
+<h1>Your cart</h1>
+{% if items %}
+<table class="cart-table">
+<thead>
+<tr><th>Product</th><th>Quantity</th><th>Unit price</th><th>Total</th><th></th></tr>
+</thead>
+<tbody>
+{% for item in items %}
+{% with product=item.product %}
+<tr>
+<td><a href="{{ product.get_absolute_url }}">{{ product.name }}</a></td>
+<td>
+<form action="{% url 'cart:cart_add' product.id %}" method="post" class="inline">
+{% csrf_token %}
+{{ item.update_form.quantity }}
+{{ item.update_form.override }}
+<button type="submit">Update</button>
+</form>
+</td>
+<td>Rs {{ item.price }}</td>
+<td>Rs {{ item.total_price }}</td>
+<td>
+<form action="{% url 'cart:cart_remove' product.id %}" method="post" class="inline">
+{% csrf_token %}
+<button type="submit" class="link">Remove</button>
+</form>
+</td>
+</tr>
+{% endwith %}
+{% endfor %}
+</tbody>
+<tfoot>
+<tr><td colspan="3"><b>Total</b></td><td colspan="2"><b>Rs {{ total }}</b></td></tr>
+</tfoot>
+</table>
+<p class="cart-actions">
+<a href="{% url 'store:product_list' %}">&larr; Continue shopping</a>
+Django E-Commerce — Day 3: Cart (Session-Based) Page 7
+<button disabled>Checkout (Day 4)</button>
+</p>
+{% else %}
+<p>Your cart is empty. <a href="{% url 'store:product_list' %}">Browse products</a>.</p>
+{% endif %}
+{% endblock %}
