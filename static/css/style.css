@@ -264,6 +264,214 @@ button.link {
     text-align: center;
 }
 
+/* User info in header */
+.user-info {
+    color: #1f2937;
+    font-weight: 600;
+    padding: 0.5rem;
+    background: #f1f3f5;
+    border-radius: 5px;
+}
+
+/* Authentication pages */
+.auth-container {
+    max-width: 500px;
+    margin: 2rem auto;
+    padding: 2rem;
+}
+
+.auth-form {
+    margin: 1.5rem 0;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    color: #1f2937;
+}
+
+.form-group input,
+.form-group textarea {
+    width: 100%;
+    min-height: 2.5rem;
+    padding: 0.6rem;
+    border: 1px solid #9aa4b2;
+    border-radius: 5px;
+    font: inherit;
+}
+
+.form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.form-errors {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    background: #fcebed;
+    color: #842029;
+    border-radius: 5px;
+    border: 1px solid #f5c2c7;
+}
+
+.error {
+    display: block;
+    margin-top: 0.25rem;
+    color: #dc2626;
+    font-size: 0.875rem;
+}
+
+.help-text {
+    display: block;
+    margin-top: 0.25rem;
+    color: #5f6875;
+    font-size: 0.875rem;
+}
+
+.auth-link {
+    margin-top: 1.5rem;
+    text-align: center;
+    color: #5f6875;
+}
+
+.btn-primary {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0.75rem 1.5rem;
+    color: #fff;
+    background: #2459a6;
+    border: 1px solid #2459a6;
+    border-radius: 5px;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: #19457f;
+}
+
+.btn-secondary {
+    display: inline-block;
+    margin-left: 1rem;
+    padding: 0.75rem 1.5rem;
+    color: #1f2937;
+    background: #fff;
+    border: 1px solid #9aa4b2;
+    border-radius: 5px;
+    font-weight: 600;
+    text-decoration: none;
+    text-align: center;
+}
+
+.btn-secondary:hover {
+    background: #f1f3f5;
+}
+
+/* Checkout page */
+.checkout-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.checkout-layout {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.order-summary {
+    padding: 1.5rem;
+    background: #f7f8fa;
+    border: 1px solid #e1e5eb;
+    border-radius: 8px;
+}
+
+.checkout-form {
+    padding: 1.5rem;
+}
+
+.cart-actions {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+/* Order detail page */
+.order-detail {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.order-info {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.info-card {
+    padding: 1.5rem;
+    background: #f7f8fa;
+    border: 1px solid #e1e5eb;
+    border-radius: 8px;
+}
+
+.info-card h2 {
+    margin-top: 0;
+    font-size: 1.1rem;
+    color: #1f2937;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    font-weight: 600;
+}
+
+.status-pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.status-paid {
+    background: #d4edda;
+    color: #155724;
+}
+
+.status-failed {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.status-cancelled {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+.info-message {
+    padding: 1rem;
+    margin: 1.5rem 0;
+    background: #e9f2fc;
+    border: 1px solid #b3d7ff;
+    border-radius: 5px;
+    color: #17406d;
+}
+
+.order-actions {
+    margin-top: 2rem;
+    text-align: center;
+}
+
 @media (max-width: 700px) {
     .site-header {
         align-items: flex-start;
@@ -284,5 +492,23 @@ button.link {
     .cart-table {
         display: block;
         overflow-x: auto;
+    }
+
+    .checkout-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .order-info {
+        grid-template-columns: 1fr;
+    }
+
+    .cart-actions {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .cart-actions a,
+    .cart-actions button {
+        width: 100%;
     }
 }

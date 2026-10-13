@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Order #{{ order.pk }}{% endblock %}
+{% block content %}
+<div class="order-detail">
+  <h1>Order #{{ order.pk }}</h1>
+
+  <div class="order-info">
+    <div class="info-card">
+      <h2>Order Status</h2>
+      <p class="status-badge status-{{ order.status }}"><strong>{{ order.get_status_display }}</strong></p>
+      <p class="muted">Placed on {{ order.created_at|date:"F d, Y H:i" }}</p>
+    </div>
+
+    <div class="info-card">
+      <h2>Delivery Information</h2>
+      <p><strong>Name:</strong> {{ order.full_name }}</p>
+      <p><strong>Phone:</strong> {{ order.phone }}</p>
+      <p><strong>Address:</strong> {{ order.address }}</p>
+    </div>
+  </div>
+
+  <h2>Order Items</h2>
+  <table class="cart-table">
+    <thead>
+      <tr><th>Product</th><th>Qty</th><th>Price (snapshot)</th><th>Subtotal</th></tr>
+    </thead>
+    <tbody>
+      {% for item in order.items.all %}
+      <tr>
+        <td>{{ item.product.name }}</td>
+        <td>{{ item.quantity }}</td>
+        <td>Rs. {{ item.price }}</td>
+        <td>Rs. {{ item.subtotal }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr><th colspan="3">Total</th><th>Rs. {{ order.total_amount }}</th></tr>
+    </tfoot>
+  </table>
+
+  {% if order.status == "pending" %}
+    <div class="info-message">
+      <p><em>Payment processing will be available soon.</em></p>
+    </div>
+  {% endif %}
+
+  <div class="order-actions">
+    <a href="{% url 'store:product_list' %}" class="btn-secondary">Continue Shopping</a>
+  </div>
+</div>
+{% endblock %}

@@ -3,9 +3,12 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 urlpatterns = [
-path("admin/", admin.site.urls),
-path("cart/", include("cart.urls")), # NEW -- specific prefixes before the "" catch-all
-path("", include("store.urls")),
+    path("admin/", admin.site.urls),
+    path("accounts/", include("django.contrib.auth.urls")),   # login, logout, password reset...
+    path("accounts/", include("accounts.urls")),               # our register view
+    path("cart/", include("cart.urls")),
+    path("orders/", include("orders.urls")),
+    path("", include("store.urls")),                           # keep the catch-all LAST
 ]
 
 if settings.DEBUG:

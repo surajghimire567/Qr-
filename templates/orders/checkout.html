@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Checkout{% endblock %}
+{% block content %}
+<div class="checkout-container">
+  <h1>Checkout</h1>
+
+  <div class="checkout-layout">
+    <div class="order-summary">
+      <h2>Order Summary</h2>
+      <table class="cart-table">
+        <thead>
+          <tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th></tr>
+        </thead>
+        <tbody>
+          {% for item in cart %}
+          <tr>
+            <td>{{ item.product.name }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>Rs. {{ item.price }}</td>
+            <td>Rs. {{ item.total_price }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+        <tfoot>
+          <tr><th colspan="3">Grand Total</th><th>Rs. {{ cart.get_total_price }}</th></tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div class="checkout-form">
+      <h2>Delivery Information</h2>
+      <form method="post">
+        {% csrf_token %}
+        {% if form.errors %}
+          <div class="form-errors">
+            <p>Please correct the errors below.</p>
+          </div>
+        {% endif %}
+        <div class="form-group">
+          <label for="id_full_name">Full Name:</label>
+          {{ form.full_name }}
+          {% if form.full_name.errors %}
+            <span class="error">{{ form.full_name.errors }}</span>
+          {% endif %}
+        </div>
+        <div class="form-group">
+          <label for="id_phone">Phone Number:</label>
+          {{ form.phone }}
+          {% if form.phone.errors %}
+            <span class="error">{{ form.phone.errors }}</span>
+          {% endif %}
+        </div>
+        <div class="form-group">
+          <label for="id_address">Delivery Address:</label>
+          {{ form.address }}
+          {% if form.address.errors %}
+            <span class="error">{{ form.address.errors }}</span>
+          {% endif %}
+        </div>
+        <button type="submit" class="btn-primary">Place Order</button>
+        <a href="{% url 'cart:cart_detail' %}" class="btn-secondary">Back to Cart</a>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

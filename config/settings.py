@@ -18,6 +18,7 @@ INSTALLED_APPS = [
     "store",
     "orders",
     "cart",
+    "accounts",
     
 
     
@@ -83,3 +84,6 @@ MEDIA_URL = "/media/"  # URL prefix for uploaded files
 MEDIA_ROOT = BASE_DIR / "media"  # folder on disk for uploaded files
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+LOGIN_URL = "login"
+LOGIN_REDIRECT_URL = "store:product_list"
+LOGOUT_REDIRECT_URL = "store:product_list" 
