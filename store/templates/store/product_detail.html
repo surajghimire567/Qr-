@@ -21,7 +21,6 @@
  <p class="badge">Out of stock</p>
  {% endif %}
  <p>{{ product.description|linebreaks }}</p>
-Reference — store/templates/store/product_detail.html (replace the disabled button)
 {% if product.in_stock %}
 <form action="{% url 'cart:cart_add' product.id %}" method="post" class="add-form">
 {% csrf_token %}
