@@ -5,7 +5,8 @@ from importlib import import_module
 
 from django.conf import settings
 from django.contrib.auth import logout
-from django.contrib.sessions.exceptions import SessionInterrupted, UpdateError
+from django.contrib.sessions.backends.base import UpdateError
+from django.contrib.sessions.exceptions import SessionInterrupted
 from django.utils.cache import patch_vary_headers
 from django.utils.http import http_date
 
