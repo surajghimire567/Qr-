@@ -39,10 +39,18 @@
     </tfoot>
   </table>
 
-  {% if order.status == "pending" %}
+    {% if order.status == "pending" or order.status == "failed" %}
     <div class="info-message">
-      <p><em>Payment processing will be available soon.</em></p>
+      <h2>Pay Rs. {{ order.total_amount }}</h2>
+      <form method="post" action="{% url 'payments:khalti_start' order.pk %}" style="display:inline">
+        {% csrf_token %}<button type="submit" class="btn">Pay with Khalti</button>
+      </form>
+      <form method="post" action="{% url 'payments:esewa_start' order.pk %}" style="display:inline">
+        {% csrf_token %}<button type="submit" class="btn">Pay with eSewa</button>
+      </form>
     </div>
+  {% elif order.status == "paid" %}
+    <div class="info-message"><p>Paid on {{ order.paid_at|date:"F d, Y H:i" }} — ref <code>{{ order.payment_ref }}</code></p></div>
   {% endif %}
 
   <div class="order-actions">
