@@ -19,6 +19,7 @@ INSTALLED_APPS = [
     "orders",
     "cart",
     "accounts",
+    "payments",
     
 
     
@@ -87,3 +88,11 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 LOGIN_URL = "login"
 LOGIN_REDIRECT_URL = "store:product_list"
 LOGOUT_REDIRECT_URL = "store:product_list" 
+
+# ---- Day 5: payment gateways (real values live in .env) ----
+KHALTI_SECRET_KEY = config("KHALTI_SECRET_KEY", default="")
+KHALTI_BASE_URL = config("KHALTI_BASE_URL", default="https://dev.khalti.com/api/v2/")
+ESEWA_PRODUCT_CODE = config("ESEWA_PRODUCT_CODE", default="EPAYTEST")
+ESEWA_SECRET_KEY = config("ESEWA_SECRET_KEY", default="8gBm/:&EnhH.1/q")  # public sandbox key
+ESEWA_FORM_URL = config("ESEWA_FORM_URL", default="https://rc-epay.esewa.com.np/api/epay/main/v2/form")
+ESEWA_STATUS_URL = config("ESEWA_STATUS_URL", default="https://rc.esewa.com.np/api/epay/transaction/status/")

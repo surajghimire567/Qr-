@@ -61,6 +61,10 @@
 
 ## How to Use
 
+### Configure Environment Variables
+Before running Django commands, copy `.env.example` to `.env` and set a unique
+`SECRET_KEY`. The `.env` file is ignored by Git and must not be committed.
+
 ### Create Admin Account
 ```bash
 python manage.py createsuperuser
