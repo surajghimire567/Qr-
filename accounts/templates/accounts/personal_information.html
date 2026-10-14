@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Personal information | My account{% endblock %}
+{% block content %}
+<section class="profile-page profile-form-page">
+  <p><a href="{% url 'accounts:profile' %}">← My account</a></p>
+  <h1>Personal information</h1>
+  <p class="muted">Update the name and email address saved on your account.</p>
+
+  <form method="post" class="profile-form">
+    {% csrf_token %}
+    {% if form.errors %}<div class="form-errors">Please correct the errors below.</div>{% endif %}
+    {% for field in form %}
+      <div class="form-group">
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% for error in field.errors %}<span class="error">{{ error }}</span>{% endfor %}
+      </div>
+    {% endfor %}
+    <button type="submit">Save changes</button>
+  </form>
+</section>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}My account{% endblock %}
+{% block content %}
+<section class="profile-page">
+  <h1>My account</h1>
+  <p class="muted">Manage your details, password, and orders.</p>
+
+  <nav class="profile-actions" aria-label="Account options">
+    <a class="profile-action" href="{% url 'accounts:personal_information' %}">
+      <strong>Personal information</strong>
+      <span>Update your name and email address</span>
+    </a>
+    <a class="profile-action" href="{% url 'password_change' %}">
+      <strong>Change password</strong>
+      <span>Update your account password</span>
+    </a>
+    <a class="profile-action" href="{% url 'accounts:order_history' %}">
+      <strong>My orders</strong>
+      <span>View your orders and payment statuses</span>
+    </a>
+  </nav>
+
+  <div class="profile-section-heading">
+    <h2>Recent orders</h2>
+    <a href="{% url 'accounts:order_history' %}">View all orders</a>
+  </div>
+  {% include "accounts/_orders_table.html" with orders=recent_orders %}
+</section>
+{% endblock %}

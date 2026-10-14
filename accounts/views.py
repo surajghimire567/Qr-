@@ -1,7 +1,9 @@
+from django.contrib import messages
 from django.contrib.auth import login
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
-from .forms import RegisterForm
+from .forms import ProfileForm, RegisterForm
 from django.utils.http import url_has_allowed_host_and_scheme
 
 
@@ -25,3 +27,28 @@ def register(request):
         form = RegisterForm()
     return render(request, "registration/register.html",
                   {"form": form, "next": request.GET.get("next", "")})
+
+
+@login_required
+def profile(request):
+    recent_orders = request.user.orders.all()[:5]
+    return render(request, "accounts/profile.html", {"recent_orders": recent_orders})
+
+
+@login_required
+def personal_information(request):
+    if request.method == "POST":
+        form = ProfileForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Your personal information has been updated.")
+            return redirect("accounts:personal_information")
+    else:
+        form = ProfileForm(instance=request.user)
+    return render(request, "accounts/personal_information.html", {"form": form})
+
+
+@login_required
+def order_history(request):
+    orders = request.user.orders.all()
+    return render(request, "accounts/order_history.html", {"orders": orders})

@@ -9,3 +9,14 @@ class RegisterForm(UserCreationForm):
     class Meta(UserCreationForm.Meta):
         model = User
         fields = ["username", "email"]
+
+
+class ProfileForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "email"]
+        labels = {
+            "first_name": "First name",
+            "last_name": "Last name",
+            "email": "Email address",
+        }

@@ -26,14 +26,18 @@ INSTALLED_APPS = [
 
 ]
 CART_SESSION_ID = "cart" # the key inside request.session
+ADMIN_SESSION_COOKIE_NAME = "adminsessionid"
+ADMIN_SESSION_COOKIE_PATH = "/admin/"
 
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "config.middleware.AdminSessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "config.middleware.StorefrontStaffLogoutMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]

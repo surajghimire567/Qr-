@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}My orders | My account{% endblock %}
+{% block content %}
+<section class="profile-page">
+  <p><a href="{% url 'accounts:profile' %}">← My account</a></p>
+  <h1>My orders</h1>
+  <p class="muted">Track each order and its payment status.</p>
+  {% include "accounts/_orders_table.html" with orders=orders %}
+</section>
+{% endblock %}

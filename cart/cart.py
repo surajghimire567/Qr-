@@ -1,14 +1,44 @@
+from copy import deepcopy
 from decimal import Decimal
 
 from django.conf import settings
 from store.models import Product
 
+from .models import SavedCart
+
 
 class Cart:
     def __init__(self, request):
+        self.request = request
         self.session = request.session
-        # don't create the key yet -- an empty cart costs nothing until add()
-        self.cart = self.session.get(settings.CART_SESSION_ID, {})
+        self.user = request.user if request.user.is_authenticated else None
+
+        if self.user is None:
+            # Guest carts live in the session until the customer signs in.
+            self.saved_cart = None
+            self.cart = self.session.get(settings.CART_SESSION_ID, {})
+            return
+
+        # The template context processor and views may each create a Cart during
+        # one request, so reuse the saved-cart lookup for that request.
+        if not hasattr(request, "_saved_cart_record_loaded"):
+            request._saved_cart_record = SavedCart.objects.filter(user=self.user).first()
+            request._saved_cart_record_loaded = True
+        self.saved_cart = request._saved_cart_record
+        self.cart = deepcopy(self.saved_cart.items) if self.saved_cart else {}
+
+        # Preserve items collected before login by combining them with the
+        # account's saved cart, then remove the old session copy.
+        guest_cart = self.session.get(settings.CART_SESSION_ID, {})
+        if guest_cart:
+            for product_id, item in guest_cart.items():
+                old_quantity = self.cart.get(product_id, {}).get("quantity", 0)
+                self.cart[product_id] = {
+                    "quantity": old_quantity + item.get("quantity", 0)
+                }
+            self.session.pop(settings.CART_SESSION_ID, None)
+            self.session.modified = True
+            self.save()
 
     def add(self, product, quantity=1, override_quantity=False):
         pid = str(product.id)  # JSON object keys are always strings
@@ -31,13 +61,28 @@ class Cart:
             self.save()
 
     def save(self):
-        self.session[settings.CART_SESSION_ID] = self.cart
-        self.session.modified = True  # nested dict changes aren't auto-detected
+        if self.user is None:
+            self.session[settings.CART_SESSION_ID] = self.cart
+            self.session.modified = True  # nested dict changes aren't auto-detected
+            return
+
+        if self.saved_cart is None:
+            self.saved_cart = SavedCart.objects.create(user=self.user, items=self.cart)
+        else:
+            self.saved_cart.items = self.cart
+            self.saved_cart.save(update_fields=["items", "updated_at"])
+        self.request._saved_cart_record = self.saved_cart
+        self.request._saved_cart_record_loaded = True
+        if self.session.pop(settings.CART_SESSION_ID, None) is not None:
+            self.session.modified = True
 
     def clear(self):  # Day 4: called after the order is created
-        self.session.pop(settings.CART_SESSION_ID, None)
-        self.session.modified = True
         self.cart = {}
+        if self.user is None:
+            self.session.pop(settings.CART_SESSION_ID, None)
+            self.session.modified = True
+        else:
+            self.save()
 
     def __iter__(self):
         product_ids = self.cart.keys()

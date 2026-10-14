@@ -472,6 +472,85 @@ button.link {
     text-align: center;
 }
 
+/* Account and order history */
+.account-nav-link {
+    padding: 0.4rem 0.75rem;
+    border: 1px solid #9aa4b2;
+    border-radius: 5px;
+    font-weight: 600;
+}
+
+.profile-page {
+    max-width: 950px;
+    margin: 0 auto;
+}
+
+.profile-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1.5rem 0 2rem;
+}
+
+.profile-action {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    min-height: 110px;
+    padding: 1rem;
+    color: #1f2937;
+    background: #f7f8fa;
+    border: 1px solid #d8dee6;
+    border-radius: 8px;
+    text-decoration: none;
+}
+
+.profile-action:hover {
+    background: #eef3fa;
+    border-color: #9aa4b2;
+}
+
+.profile-action span {
+    color: #5f6875;
+    font-size: 0.95rem;
+}
+
+.profile-section-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.profile-section-heading h2 {
+    margin-bottom: 0.75rem;
+}
+
+.profile-table-wrap {
+    overflow-x: auto;
+}
+
+.profile-orders-table {
+    min-width: 650px;
+}
+
+.profile-orders-table .status-badge {
+    padding: 0.3rem 0.6rem;
+    white-space: nowrap;
+}
+
+.profile-form-page {
+    max-width: 620px;
+}
+
+.profile-form {
+    margin-top: 1.5rem;
+}
+
+.profile-form .help-text ul {
+    padding-left: 1.25rem;
+}
+
 @media (max-width: 700px) {
     .site-header {
         align-items: flex-start;
@@ -500,6 +579,11 @@ button.link {
 
     .order-info {
         grid-template-columns: 1fr;
+    }
+
+    .profile-section-heading {
+        align-items: flex-start;
+        flex-direction: column;
     }
 
     .cart-actions {
