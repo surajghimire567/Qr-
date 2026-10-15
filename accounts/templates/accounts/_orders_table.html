@@ -14,7 +14,7 @@
                 {% if order.status == "failed" %}Failed{% else %}{{ order.get_status_display }}{% endif %}
               </span>
             </td>
-            <td>Rs. {{ order.total_amount }}</td>
+            <td>NPR {{ order.total_amount }}</td>
             <td><a href="{% url 'orders:order_detail' order.pk %}">View order</a></td>
           </tr>
         {% endfor %}

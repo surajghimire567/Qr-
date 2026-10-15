@@ -2,40 +2,40 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
- <meta charset="utf-8">
- <meta name="viewport" content="width=device-width, initial-scale=1">
- <title>{% block title %}Django Shop{% endblock %}</title>
- <link rel="stylesheet" href="{% static 'css/style.css' %}">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Qr Shop{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
- <header class="site-header">
- <a href="{% url 'store:product_list' %}" class="logo">🛒 Django Shop</a>
- <nav>
-  <a href="{% url 'store:product_list' %}">Products</a>
-  <a href="{% url 'cart:cart_detail' %}">Cart ({{ cart_count }})</a>
-  {% if user.is_authenticated %}
-    <span class="user-info">Hello, {{ user.username }}</span>
-    <a class="account-nav-link" href="{% url 'accounts:profile' %}">My account</a>
-    <form method="post" action="{% url 'logout' %}" class="inline">
-      {% csrf_token %}
-      <button type="submit" class="link">Logout</button>
-    </form>
-  {% else %}
-    <a href="{% url 'login' %}">Login</a>
-    <a href="{% url 'accounts:register' %}">Register</a>
-  {% endif %}
- </nav>
- </header>
- <main class="container">
-  {% if messages %}
-  <ul class="messages">
-  {% for message in messages %}
-  <li class="msg-{{ message.tags }}">{{ message }}</li>
-  {% endfor %}
-  </ul>
-  {% endif %}
-  {% block content %}{% endblock %}
- </main>
- <footer class="site-footer">Built with Django &copy; 2026</footer>
+  <header class="site-header">
+    <a href="{% url 'store:product_list' %}" class="logo">Qr Shop</a>
+    <nav aria-label="Main navigation">
+      <a href="{% url 'store:product_list' %}">Products</a>
+      <a href="{% url 'cart:cart_detail' %}">Cart ({{ cart_count }})</a>
+      {% if user.is_authenticated %}
+        <span class="user-info">Hello, {{ user.username }}</span>
+        <a class="account-nav-link" href="{% url 'accounts:profile' %}">My account</a>
+        <form method="post" action="{% url 'logout' %}" class="inline">
+          {% csrf_token %}
+          <button type="submit" class="link">Log out</button>
+        </form>
+      {% else %}
+        <a href="{% url 'login' %}">Log in</a>
+        <a href="{% url 'accounts:register' %}">Register</a>
+      {% endif %}
+    </nav>
+  </header>
+  <main class="container">
+    {% if messages %}
+      <ul class="messages" aria-live="polite">
+        {% for message in messages %}
+          <li class="msg-{{ message.tags }}">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer">Qr Shop academic demo &copy; 2026</footer>
 </body>
 </html>

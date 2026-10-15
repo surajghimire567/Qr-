@@ -1,60 +1,93 @@
 {% extends "base.html" %}
 {% block title %}Order #{{ order.pk }}{% endblock %}
 {% block content %}
-<div class="order-detail">
+<section class="order-detail">
   <h1>Order #{{ order.pk }}</h1>
 
   <div class="order-info">
-    <div class="info-card">
-      <h2>Order Status</h2>
+    <section class="info-card" aria-labelledby="order-status-heading">
+      <h2 id="order-status-heading">Order status</h2>
       <p class="status-badge status-{{ order.status }}"><strong>{{ order.get_status_display }}</strong></p>
       <p class="muted">Placed on {{ order.created_at|date:"F d, Y H:i" }}</p>
-    </div>
+    </section>
 
-    <div class="info-card">
-      <h2>Delivery Information</h2>
+    <section class="info-card" aria-labelledby="delivery-heading">
+      <h2 id="delivery-heading">Delivery information</h2>
       <p><strong>Name:</strong> {{ order.full_name }}</p>
       <p><strong>Phone:</strong> {{ order.phone }}</p>
       <p><strong>Address:</strong> {{ order.address }}</p>
-    </div>
+    </section>
   </div>
 
-  <h2>Order Items</h2>
-  <table class="cart-table">
-    <thead>
-      <tr><th>Product</th><th>Qty</th><th>Price (snapshot)</th><th>Subtotal</th></tr>
-    </thead>
-    <tbody>
-      {% for item in order.items.all %}
-      <tr>
-        <td>{{ item.product.name }}</td>
-        <td>{{ item.quantity }}</td>
-        <td>Rs. {{ item.price }}</td>
-        <td>Rs. {{ item.subtotal }}</td>
-      </tr>
-      {% endfor %}
-    </tbody>
-    <tfoot>
-      <tr><th colspan="3">Total</th><th>Rs. {{ order.total_amount }}</th></tr>
-    </tfoot>
-  </table>
+  <h2>Order items</h2>
+  <div class="profile-table-wrap">
+    <table class="cart-table profile-orders-table">
+      <thead>
+        <tr><th>Product</th><th>Quantity</th><th>Price at purchase</th><th>Subtotal</th></tr>
+      </thead>
+      <tbody>
+        {% for item in order.items.all %}
+        <tr>
+          <td>{{ item.product.name }}</td>
+          <td>{{ item.quantity }}</td>
+          <td>NPR {{ item.price }}</td>
+          <td>NPR {{ item.subtotal }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr><th colspan="3">Total</th><th>NPR {{ order.total_amount }}</th></tr>
+      </tfoot>
+    </table>
+  </div>
 
-    {% if order.status == "pending" or order.status == "failed" %}
-    <div class="info-message">
-      <h2>Pay Rs. {{ order.total_amount }}</h2>
-      <form method="post" action="{% url 'payments:khalti_start' order.pk %}" style="display:inline">
-        {% csrf_token %}<button type="submit" class="btn">Pay with Khalti</button>
-      </form>
-      <form method="post" action="{% url 'payments:esewa_start' order.pk %}" style="display:inline">
-        {% csrf_token %}<button type="submit" class="btn">Pay with eSewa</button>
-      </form>
-    </div>
+  {% if order.status == "pending" %}
+    <section class="info-message" aria-labelledby="payment-heading">
+      <h2 id="payment-heading">Payment</h2>
+      {% if order.payment_starting %}
+        <p>Payment initiation is being checked. Do not start another payment; contact support if this message remains.</p>
+      {% elif order.payment_ref %}
+        <p>Payment is awaiting verification. Do not pay again while the result is uncertain.</p>
+        <form method="post" action="{% url 'payments:check_payment' order.pk %}">
+          {% csrf_token %}
+          <button type="submit">Check payment status</button>
+        </form>
+      {% else %}
+        <p>Reserved stock is held while you complete payment or cancel this order.</p>
+        {% if khalti_enabled %}
+          <form method="post" action="{% url 'payments:khalti_start' order.pk %}" class="inline">
+            {% csrf_token %}
+            <button type="submit">Pay with Khalti</button>
+          </form>
+        {% endif %}
+        {% if esewa_enabled %}
+          <form method="post" action="{% url 'payments:esewa_start' order.pk %}" class="inline">
+            {% csrf_token %}
+            <button type="submit">Pay with eSewa</button>
+          </form>
+        {% endif %}
+        {% if not khalti_enabled and not esewa_enabled %}
+          <p>No payment gateway is configured for this demo.</p>
+        {% endif %}
+        <form method="post" action="{% url 'orders:cancel_order' order.pk %}">
+          {% csrf_token %}
+          <button type="submit" class="button-secondary">Cancel order and release reserved stock</button>
+        </form>
+      {% endif %}
+    </section>
+  {% elif order.status == "failed" %}
+    <div class="info-message"><p>This order is closed. Place a new order if you want to try again.</p></div>
+  {% elif order.status == "cancelled" %}
+    <div class="info-message"><p>This order was cancelled and its reserved stock was released.</p></div>
   {% elif order.status == "paid" %}
-    <div class="info-message"><p>Paid on {{ order.paid_at|date:"F d, Y H:i" }} — ref <code>{{ order.payment_ref }}</code></p></div>
+    <div class="info-message">
+      <p>Paid{% if order.paid_at %} on {{ order.paid_at|date:"F d, Y H:i" }}{% endif %}.</p>
+      {% if order.gateway_transaction_id %}<p>Receipt: <code>{{ order.gateway_transaction_id }}</code></p>{% endif %}
+    </div>
   {% endif %}
 
   <div class="order-actions">
-    <a href="{% url 'store:product_list' %}" class="btn-secondary">Continue Shopping</a>
+    <a href="{% url 'store:product_list' %}" class="btn-secondary">Continue shopping</a>
   </div>
-</div>
+</section>
 {% endblock %}

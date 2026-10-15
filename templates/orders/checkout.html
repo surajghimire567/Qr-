@@ -16,13 +16,13 @@
           <tr>
             <td>{{ item.product.name }}</td>
             <td>{{ item.quantity }}</td>
-            <td>Rs. {{ item.price }}</td>
-            <td>Rs. {{ item.total_price }}</td>
+            <td>NPR {{ item.price }}</td>
+            <td>NPR {{ item.total_price }}</td>
           </tr>
           {% endfor %}
         </tbody>
         <tfoot>
-          <tr><th colspan="3">Grand Total</th><th>Rs. {{ cart.get_total_price }}</th></tr>
+          <tr><th colspan="3">Grand total</th><th>NPR {{ cart.get_total_price }}</th></tr>
         </tfoot>
       </table>
     </div>
@@ -31,27 +31,29 @@
       <h2>Delivery Information</h2>
       <form method="post">
         {% csrf_token %}
+        {{ form.checkout_key }}
         {% if form.errors %}
           <div class="form-errors">
             <p>Please correct the errors below.</p>
+            {{ form.non_field_errors }}
           </div>
         {% endif %}
         <div class="form-group">
-          <label for="id_full_name">Full Name:</label>
+          <label for="id_full_name">Full name</label>
           {{ form.full_name }}
           {% if form.full_name.errors %}
             <span class="error">{{ form.full_name.errors }}</span>
           {% endif %}
         </div>
         <div class="form-group">
-          <label for="id_phone">Phone Number:</label>
+          <label for="id_phone">Phone number</label>
           {{ form.phone }}
           {% if form.phone.errors %}
             <span class="error">{{ form.phone.errors }}</span>
           {% endif %}
         </div>
         <div class="form-group">
-          <label for="id_address">Delivery Address:</label>
+          <label for="id_address">Delivery address</label>
           {{ form.address }}
           {% if form.address.errors %}
             <span class="error">{{ form.address.errors }}</span>

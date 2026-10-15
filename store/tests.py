@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
@@ -57,3 +58,15 @@ class CatalogViewTests(TestCase):
         # select_related keeps this flat (no N+1)
         with self.assertNumQueries(2):  # 1 categories + 1 products JOIN category
             self.client.get(reverse("store:product_list"))
+
+
+class DemoSeedCommandTests(TestCase):
+    def test_seed_command_is_idempotent_and_synthetic(self):
+        call_command("seed_demo_data", verbosity=0)
+        call_command("seed_demo_data", verbosity=0)
+        self.assertEqual(Category.objects.filter(slug__in=["accessories", "audio", "computers"]).count(), 3)
+        self.assertEqual(Product.objects.filter(slug__startswith="demo-").count(), 4)
+        self.assertEqual(
+            Product.objects.get(slug="demo-keyboard").description,
+            "Synthetic sample product for a local academic demo.",
+        )

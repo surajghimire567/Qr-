@@ -4,9 +4,11 @@ from .models import Order
 
 
 class CheckoutForm(forms.ModelForm):
+    checkout_key = forms.UUIDField(widget=forms.HiddenInput)
+
     class Meta:
         model = Order
-        fields = ["full_name", "phone", "address"]   # NEVER user, total_amount, status
+        fields = ["full_name", "phone", "address", "checkout_key"]
 
     def clean_phone(self):
         phone = self.cleaned_data["phone"].strip().replace(" ", "")

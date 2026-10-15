@@ -2,9 +2,20 @@
 {% block title %}My orders | My account{% endblock %}
 {% block content %}
 <section class="profile-page">
-  <p><a href="{% url 'accounts:profile' %}">← My account</a></p>
+  <p><a href="{% url 'accounts:profile' %}">Back to my account</a></p>
   <h1>My orders</h1>
   <p class="muted">Track each order and its payment status.</p>
   {% include "accounts/_orders_table.html" with orders=orders %}
+  {% if page_obj.has_other_pages %}
+    <nav aria-label="Order history pages" class="pagination">
+      {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}">Previous</a>
+      {% endif %}
+      <span aria-current="page">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}">Next</a>
+      {% endif %}
+    </nav>
+  {% endif %}
 </section>
 {% endblock %}

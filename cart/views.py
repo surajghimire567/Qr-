@@ -24,9 +24,11 @@ def cart_add(request, product_id):
 
     cd = form.cleaned_data
     requested = cd["quantity"]
+    old_qty = cart.cart.get(str(product.id), {}).get("quantity", 0)
+    requested_total = requested if cd["override"] else old_qty + requested
     new_qty = cart.add(product, quantity=requested, override_quantity=cd["override"])
 
-    if new_qty < (requested if cd["override"] else new_qty):
+    if new_qty < requested_total:
         messages.warning(request, f"Only {product.stock} of {product.name} available.")
     else:
         messages.success(request, f"{product.name} - quantity in cart: {new_qty}.")
@@ -48,6 +50,9 @@ def cart_detail(request):
     for item in items:
         item["update_form"] = CartAddProductForm(
             initial={"quantity": item["quantity"], "override": True}
+        )
+        item["update_form"].fields["quantity"].widget.attrs["aria-label"] = (
+            f"Quantity for {item['product'].name}"
         )
 
     total = sum((i["total_price"] for i in items), 0)

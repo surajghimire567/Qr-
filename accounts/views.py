@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
+from django.core.paginator import Paginator
 
 from .forms import ProfileForm, RegisterForm
 from django.utils.http import url_has_allowed_host_and_scheme
@@ -50,5 +51,10 @@ def personal_information(request):
 
 @login_required
 def order_history(request):
-    orders = request.user.orders.all()
-    return render(request, "accounts/order_history.html", {"orders": orders})
+    orders = request.user.orders.order_by("-created_at", "-pk")
+    page_obj = Paginator(orders, 10).get_page(request.GET.get("page"))
+    return render(
+        request,
+        "accounts/order_history.html",
+        {"orders": page_obj, "page_obj": page_obj},
+    )
