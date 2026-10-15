@@ -1,0 +1,480 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Day 5 - Gateway Integration</title><style>body{font-family:Arial,sans-serif;max-width:900px;margin:24px auto;padding:0 16px;color:#222;font-size:14px;line-height:1.5}
+h1{color:#0b3d91;margin-bottom:0}.sub{color:#555;margin-top:4px}h2{color:#0b3d91;border-bottom:2px solid #0b3d91;padding-bottom:4px;margin-top:28px}h3{color:#1f5fbf;margin-top:22px}
+table{border-collapse:collapse;width:100%;margin:10px 0}td,th{border:1px solid #ccc;padding:5px 8px;text-align:left}th{background:#eef3fb}
+.note{background:#fff8e1;border-left:4px solid #f0b400;padding:8px 12px;margin:10px 0}
+code{font-family:"Courier New",monospace;background:#f2f2f2;padding:0 3px}
+.cb{border:1px solid #d0d7de;border-radius:6px;margin:10px 0;page-break-inside:avoid;overflow:hidden}
+.cbh{display:flex;justify-content:space-between;align-items:center;background:#e9eef5;padding:4px 10px;font-size:12px;font-weight:bold;color:#333}
+.cb pre{margin:0;padding:10px 12px;background:#f6f8fa;overflow-x:auto;white-space:pre-wrap;word-break:break-word}
+.cb pre code{background:none;padding:0;font-size:12px}
+.copy{cursor:pointer;border:1px solid #0b3d91;background:#0b3d91;color:#fff;border-radius:4px;padding:3px 12px;font-size:12px}
+.copy.ok{background:#2e7d32;border-color:#2e7d32}
+@media print{.copy{display:none}}</style></head><body><h1>Day 5 — Gateway Integration (Khalti + eSewa)</h1><p class="sub">Django E-Commerce Project | Part 1: Build Steps with Syntax | Part 2: Explanations, Checks &amp; Reflection</p><h2>0. Today's Goal</h2><p>A pending order from Day 4 gets two buttons: <b>Pay with Khalti</b> and <b>Pay with eSewa</b>. Both start as <b>POST</b> (CSRF-protected, owner-only). When the gateway sends the user back, the order is marked <code>paid</code> <b>only after your server independently verifies</b> the transaction: Khalti via the <code>lookup</code> API, eSewa via HMAC-SHA256 signature check <b>plus</b> the status API, and in both cases the amount must match <code>order.total_amount</code>. Marking paid is idempotent (<code>select_for_update</code>), so refreshes or duplicate callbacks cannot double-process. Both gateways are built; you pick one to keep later — the other is just two unused URLs.</p><table><tr><th>Block</th><th>What you do</th><th>Est. time</th></tr><tr><td>0</td><td>Day 4 carry-over: all tests green, read LEARNING.md open problem</td><td>20 min</td></tr><tr><td>A</td><td>Sandbox accounts, .env keys, <code>pip install requests</code>, settings</td><td>30–45 min</td></tr><tr><td>B</td><td><code>payments</code> app + <code>gateways.py</code> (all HTTP/HMAC in one file)</td><td>60–75 min</td></tr><tr><td>C</td><td><code>services.py</code>: idempotent <code>mark_paid</code> / <code>mark_failed</code></td><td>20 min</td></tr><tr><td>D</td><td>Khalti: initiate → redirect → lookup → verify</td><td>60 min</td></tr><tr><td>E</td><td>eSewa: signed form → success callback → HMAC + status check</td><td>75–90 min</td></tr><tr><td>F</td><td>URLs + Pay buttons on order detail</td><td>20 min</td></tr><tr><td>G</td><td>Tests with mocked gateways (11 new, 19 total) + one real sandbox payment each</td><td>60 min</td></tr><tr><td>H</td><td>Blank-Page Test + LEARNING.md + commit/push</td><td>40 min</td></tr><tr><td></td><td>Focused work total</td><td>≈ 6.5–8 h</td></tr></table><div class="note">Day 5 is the anchor of the project. If Block E runs long, move the real-sandbox click-through to the first hour of Day 6 — but do not skip the tests that prove a forged redirect is rejected.</div><h2>PART 1 — Build Steps with Syntax</h2><h3>Step A — Sandbox keys, dependency, settings</h3><p>Khalti: sign up as merchant at <code>test-admin.khalti.com</code> → copy the <b>live secret key</b> of the test account (it is a sandbox key). Khalti test login: any 98XXXXXXXX test ID shown in their docs, MPIN <code>1111</code>, OTP <code>987654</code>. eSewa sandbox needs no signup: product code <code>EPAYTEST</code>, secret <code>8gBm/:&amp;EnhH.1/q</code>, test ID <code>9806800001</code> (to …005), password <code>Nepal@123</code>, MPIN <code>1122</code>, token <code>123456</code>.</p><div class="cb"><div class="cbh"><span>syntax</span><button class="copy">Copy</button></div><pre><code>config(&quot;NAME&quot;, default=&quot;...&quot;)            # python-decouple: read from .env, fallback default
+requests.post(url, json=payload, headers=h, timeout=15)   # always set a timeout
+hmac.new(key_bytes, msg_bytes, hashlib.sha256).digest()   # raw HMAC bytes
+base64.b64encode(raw).decode()                            # eSewa wants base64 text
+hmac.compare_digest(a, b)                                 # constant-time compare</code></pre></div><div class="cb"><div class="cbh"><span>terminal</span><button class="copy">Copy</button></div><pre><code>pip install requests
+pip freeze &gt; requirements.txt          # NOTE: your current requirements.txt is UTF-16; this rewrites it as normal UTF-8
+python manage.py startapp payments     # or create the folder by hand as below
+mkdir -p payments/templates/payments</code></pre></div><div class="cb"><div class="cbh"><span>.env (add — never commit)</span><button class="copy">Copy</button></div><pre><code>KHALTI_SECRET_KEY=your_khalti_test_secret_key
+# Optional overrides (defaults are the sandbox URLs):
+# KHALTI_BASE_URL=https://dev.khalti.com/api/v2/
+# ESEWA_PRODUCT_CODE=EPAYTEST
+# ESEWA_SECRET_KEY=8gBm/:&amp;EnhH.1/q</code></pre></div><div class="cb"><div class="cbh"><span>config/settings.py — add &quot;payments&quot; to INSTALLED_APPS</span><button class="copy">Copy</button></div><pre><code>    # local apps
+    &quot;store&quot;,
+    &quot;orders&quot;,
+    &quot;cart&quot;,
+    &quot;accounts&quot;,
+    &quot;payments&quot;,</code></pre></div><div class="cb"><div class="cbh"><span>config/settings.py (add at bottom)</span><button class="copy">Copy</button></div><pre><code># ---- Day 5: payment gateways (real values live in .env) ----
+KHALTI_SECRET_KEY = config(&quot;KHALTI_SECRET_KEY&quot;, default=&quot;&quot;)
+KHALTI_BASE_URL = config(&quot;KHALTI_BASE_URL&quot;, default=&quot;https://dev.khalti.com/api/v2/&quot;)
+ESEWA_PRODUCT_CODE = config(&quot;ESEWA_PRODUCT_CODE&quot;, default=&quot;EPAYTEST&quot;)
+ESEWA_SECRET_KEY = config(&quot;ESEWA_SECRET_KEY&quot;, default=&quot;8gBm/:&amp;EnhH.1/q&quot;)  # public sandbox key
+ESEWA_FORM_URL = config(&quot;ESEWA_FORM_URL&quot;, default=&quot;https://rc-epay.esewa.com.np/api/epay/main/v2/form&quot;)
+ESEWA_STATUS_URL = config(&quot;ESEWA_STATUS_URL&quot;, default=&quot;https://rc.esewa.com.np/api/epay/transaction/status/&quot;)</code></pre></div><h3>Step B — gateways.py: the only file that talks to Khalti/eSewa</h3><p>Views stay thin; every network call and every signature lives here, so tests can mock one module.</p><div class="cb"><div class="cbh"><span>payments/apps.py</span><button class="copy">Copy</button></div><pre><code>from django.apps import AppConfig
+
+
+class PaymentsConfig(AppConfig):
+    default_auto_field = &quot;django.db.models.BigAutoField&quot;
+    name = &quot;payments&quot;</code></pre></div><div class="cb"><div class="cbh"><span>payments/__init__.py and payments/migrations/__init__.py</span><button class="copy">Copy</button></div><pre><code># empty files</code></pre></div><div class="cb"><div class="cbh"><span>payments/gateways.py</span><button class="copy">Copy</button></div><pre><code>&quot;&quot;&quot;Talks to Khalti / eSewa. Views never call requests directly.&quot;&quot;&quot;
+import base64
+import hashlib
+import hmac
+import json
+from decimal import Decimal, InvalidOperation
+
+import requests
+from django.conf import settings
+
+TIMEOUT = 15
+
+
+class GatewayError(Exception):
+    pass
+
+
+# ---------------- Khalti (ePayment v2) ----------------
+def _khalti_headers():
+    return {&quot;Authorization&quot;: f&quot;Key {settings.KHALTI_SECRET_KEY}&quot;,
+            &quot;Content-Type&quot;: &quot;application/json&quot;}
+
+
+def to_paisa(amount):
+    return int((Decimal(amount) * 100).quantize(Decimal(&quot;1&quot;)))
+
+
+def khalti_initiate(*, order, return_url, website_url):
+    payload = {
+        &quot;return_url&quot;: return_url,
+        &quot;website_url&quot;: website_url,
+        &quot;amount&quot;: to_paisa(order.total_amount),          # Khalti wants paisa (int)
+        &quot;purchase_order_id&quot;: str(order.pk),
+        &quot;purchase_order_name&quot;: f&quot;Order #{order.pk}&quot;,
+        &quot;customer_info&quot;: {&quot;name&quot;: order.full_name, &quot;phone&quot;: order.phone},
+    }
+    try:
+        r = requests.post(settings.KHALTI_BASE_URL + &quot;epayment/initiate/&quot;,
+                          json=payload, headers=_khalti_headers(), timeout=TIMEOUT)
+    except requests.RequestException as exc:
+        raise GatewayError(f&quot;Khalti unreachable: {exc}&quot;) from exc
+    if r.status_code != 200:
+        raise GatewayError(f&quot;Khalti initiate failed: {r.status_code} {r.text[:200]}&quot;)
+    data = r.json()
+    if &quot;pidx&quot; not in data or &quot;payment_url&quot; not in data:
+        raise GatewayError(&quot;Khalti response missing pidx/payment_url&quot;)
+    return data                                           # {&quot;pidx&quot;, &quot;payment_url&quot;, ...}
+
+
+def khalti_lookup(pidx):
+    &quot;&quot;&quot;Server-to-server truth. Never trust the ?status= in the redirect.&quot;&quot;&quot;
+    try:
+        r = requests.post(settings.KHALTI_BASE_URL + &quot;epayment/lookup/&quot;,
+                          json={&quot;pidx&quot;: pidx}, headers=_khalti_headers(), timeout=TIMEOUT)
+    except requests.RequestException as exc:
+        raise GatewayError(f&quot;Khalti unreachable: {exc}&quot;) from exc
+    if r.status_code not in (200, 400, 404):
+        raise GatewayError(f&quot;Khalti lookup failed: {r.status_code}&quot;)
+    return r.json()                                       # {&quot;status&quot;: &quot;Completed&quot;, &quot;total_amount&quot;: ...}
+
+
+# ---------------- eSewa (ePay v2, HMAC-SHA256) ----------------
+def esewa_sign(message):
+    digest = hmac.new(settings.ESEWA_SECRET_KEY.encode(), message.encode(),
+                      hashlib.sha256).digest()
+    return base64.b64encode(digest).decode()
+
+
+def esewa_amount(amount):
+    return f&quot;{Decimal(amount):.2f}&quot;
+
+
+def esewa_form_fields(*, order, transaction_uuid, success_url, failure_url):
+    total = esewa_amount(order.total_amount)
+    code = settings.ESEWA_PRODUCT_CODE
+    signed = &quot;total_amount,transaction_uuid,product_code&quot;
+    message = f&quot;total_amount={total},transaction_uuid={transaction_uuid},product_code={code}&quot;
+    return {
+        &quot;amount&quot;: total, &quot;tax_amount&quot;: &quot;0&quot;, &quot;product_service_charge&quot;: &quot;0&quot;,
+        &quot;product_delivery_charge&quot;: &quot;0&quot;, &quot;total_amount&quot;: total,
+        &quot;transaction_uuid&quot;: transaction_uuid, &quot;product_code&quot;: code,
+        &quot;success_url&quot;: success_url, &quot;failure_url&quot;: failure_url,
+        &quot;signed_field_names&quot;: signed, &quot;signature&quot;: esewa_sign(message),
+    }
+
+
+def esewa_decode_and_verify(data_b64):
+    &quot;&quot;&quot;Decode ?data= from eSewa and check its HMAC. Returns dict or raises GatewayError.&quot;&quot;&quot;
+    try:
+        payload = json.loads(base64.b64decode(data_b64).decode())
+        fields = payload[&quot;signed_field_names&quot;].split(&quot;,&quot;)
+        message = &quot;,&quot;.join(f&quot;{f}={payload[f]}&quot; for f in fields)
+        received = payload[&quot;signature&quot;]
+    except (ValueError, KeyError, TypeError) as exc:
+        raise GatewayError(&quot;Malformed eSewa data&quot;) from exc
+    if not hmac.compare_digest(esewa_sign(message), received):
+        raise GatewayError(&quot;eSewa signature mismatch&quot;)
+    return payload
+
+
+def esewa_status(*, transaction_uuid, total_amount):
+    &quot;&quot;&quot;Second, independent check: ask eSewa directly.&quot;&quot;&quot;
+    params = {&quot;product_code&quot;: settings.ESEWA_PRODUCT_CODE,
+              &quot;total_amount&quot;: total_amount, &quot;transaction_uuid&quot;: transaction_uuid}
+    try:
+        r = requests.get(settings.ESEWA_STATUS_URL, params=params, timeout=TIMEOUT)
+        return r.json()                                   # {&quot;status&quot;: &quot;COMPLETE&quot;, &quot;ref_id&quot;: ...}
+    except (requests.RequestException, ValueError) as exc:
+        raise GatewayError(f&quot;eSewa status check failed: {exc}&quot;) from exc
+
+
+def parse_amount(value):
+    try:
+        return Decimal(str(value).replace(&quot;,&quot;, &quot;&quot;))
+    except InvalidOperation:
+        return None</code></pre></div><h3>Step C — Idempotent state changes</h3><div class="cb"><div class="cbh"><span>payments/services.py</span><button class="copy">Copy</button></div><pre><code>from django.db import transaction
+from django.utils import timezone
+
+from orders.models import Order
+
+
+def mark_paid(order_id, ref):
+    &quot;&quot;&quot;Idempotent: a double callback / refresh can&#x27;t pay twice.&quot;&quot;&quot;
+    with transaction.atomic():
+        order = Order.objects.select_for_update().get(pk=order_id)
+        if order.status == Order.Status.PAID:
+            return order
+        order.status = Order.Status.PAID
+        order.payment_ref = ref
+        order.paid_at = timezone.now()
+        order.save(update_fields=[&quot;status&quot;, &quot;payment_ref&quot;, &quot;paid_at&quot;, &quot;updated_at&quot;])
+        return order
+
+
+def mark_failed(order_id):
+    Order.objects.filter(pk=order_id, status=Order.Status.PENDING).update(
+        status=Order.Status.FAILED, updated_at=timezone.now())</code></pre></div><h3>Step D + E — Views (Khalti and eSewa)</h3><p>Flow: <code>POST start</code> → gateway page → gateway redirects back (GET) → <b>server verifies</b> → <code>mark_paid</code> → PRG redirect to order detail.</p><div class="cb"><div class="cbh"><span>payments/views.py</span><button class="copy">Copy</button></div><pre><code>import uuid
+
+from django.conf import settings
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
+from django.views.decorators.http import require_GET, require_POST
+
+from orders.models import Order
+
+from . import gateways as gw
+from .services import mark_failed, mark_paid
+
+
+def _payable_order(request, order_id):
+    # IDOR gate again: only the owner, only unpaid orders
+    return get_object_or_404(Order, pk=order_id, user=request.user,
+                             status__in=[Order.Status.PENDING, Order.Status.FAILED])
+
+
+# ---------- Khalti ----------
+@login_required
+@require_POST
+def khalti_start(request, order_id):
+    order = _payable_order(request, order_id)
+    try:
+        data = gw.khalti_initiate(
+            order=order,
+            return_url=request.build_absolute_uri(reverse(&quot;payments:khalti_return&quot;)),
+            website_url=request.build_absolute_uri(&quot;/&quot;),
+        )
+    except gw.GatewayError as exc:
+        messages.error(request, f&quot;Could not start Khalti payment. {exc}&quot;)
+        return redirect(&quot;orders:order_detail&quot;, order_id=order.pk)
+    order.payment_ref = data[&quot;pidx&quot;]          # remember which pidx belongs to this order
+    order.status = Order.Status.PENDING
+    order.save(update_fields=[&quot;payment_ref&quot;, &quot;status&quot;, &quot;updated_at&quot;])
+    return redirect(data[&quot;payment_url&quot;])
+
+
+@login_required
+@require_GET
+def khalti_return(request):
+    pidx = request.GET.get(&quot;pidx&quot;, &quot;&quot;)
+    order = get_object_or_404(Order, payment_ref=pidx, user=request.user) if pidx else None
+    if order is None:
+        messages.error(request, &quot;Missing payment reference.&quot;)
+        return redirect(&quot;store:product_list&quot;)
+    if order.status == Order.Status.PAID:
+        return redirect(&quot;orders:order_detail&quot;, order_id=order.pk)
+    try:
+        info = gw.khalti_lookup(pidx)           # ignore GET ?status= -- ask Khalti
+    except gw.GatewayError as exc:
+        messages.error(request, f&quot;Could not verify payment yet. {exc}&quot;)
+        return redirect(&quot;orders:order_detail&quot;, order_id=order.pk)
+
+    status = info.get(&quot;status&quot;)
+    amount_ok = info.get(&quot;total_amount&quot;) == gw.to_paisa(order.total_amount)
+    if status == &quot;Completed&quot; and amount_ok:
+        mark_paid(order.pk, info.get(&quot;transaction_id&quot;) or pidx)
+        messages.success(request, f&quot;Payment verified. Order #{order.pk} is paid.&quot;)
+    elif status in (&quot;Pending&quot;, &quot;Initiated&quot;):
+        messages.info(request, &quot;Payment is still pending at Khalti. Refresh later.&quot;)
+    else:
+        mark_failed(order.pk)
+        messages.error(request, f&quot;Payment not completed ({status or &#x27;unknown&#x27;}).&quot;)
+    return redirect(&quot;orders:order_detail&quot;, order_id=order.pk)
+
+
+# ---------- eSewa ----------
+@login_required
+@require_POST
+def esewa_start(request, order_id):
+    order = _payable_order(request, order_id)
+    tx_uuid = f&quot;{order.pk}-{uuid.uuid4().hex[:12]}&quot;   # unique per attempt
+    order.payment_ref = tx_uuid
+    order.status = Order.Status.PENDING
+    order.save(update_fields=[&quot;payment_ref&quot;, &quot;status&quot;, &quot;updated_at&quot;])
+    fields = gw.esewa_form_fields(
+        order=order, transaction_uuid=tx_uuid,
+        success_url=request.build_absolute_uri(reverse(&quot;payments:esewa_success&quot;)),
+        failure_url=request.build_absolute_uri(
+            reverse(&quot;payments:esewa_failure&quot;, args=[order.pk])),
+    )
+    return render(request, &quot;payments/esewa_redirect.html&quot;,
+                  {&quot;fields&quot;: fields, &quot;action&quot;: settings.ESEWA_FORM_URL})
+
+
+@login_required
+@require_GET
+def esewa_success(request):
+    try:
+        data = gw.esewa_decode_and_verify(request.GET.get(&quot;data&quot;, &quot;&quot;))   # check 1: HMAC
+    except gw.GatewayError as exc:
+        messages.error(request, f&quot;Payment rejected: {exc}&quot;)
+        return redirect(&quot;store:product_list&quot;)
+
+    order = get_object_or_404(Order, payment_ref=data.get(&quot;transaction_uuid&quot;), user=request.user)
+    if order.status == Order.Status.PAID:
+        return redirect(&quot;orders:order_detail&quot;, order_id=order.pk)
+
+    if gw.parse_amount(data.get(&quot;total_amount&quot;)) != order.total_amount:
+        messages.error(request, &quot;Amount mismatch. Payment not accepted.&quot;)
+        return redirect(&quot;orders:order_detail&quot;, order_id=order.pk)
+
+    try:                                                                  # check 2: ask eSewa
+        st = gw.esewa_status(transaction_uuid=order.payment_ref,
+                             total_amount=gw.esewa_amount(order.total_amount))
+    except gw.GatewayError as exc:
+        messages.error(request, f&quot;Could not verify payment yet. {exc}&quot;)
+        return redirect(&quot;orders:order_detail&quot;, order_id=order.pk)
+
+    if data.get(&quot;status&quot;) == &quot;COMPLETE&quot; and st.get(&quot;status&quot;) == &quot;COMPLETE&quot;:
+        mark_paid(order.pk, st.get(&quot;ref_id&quot;) or data.get(&quot;transaction_code&quot;) or order.payment_ref)
+        messages.success(request, f&quot;Payment verified. Order #{order.pk} is paid.&quot;)
+    else:
+        messages.error(request, f&quot;Payment not completed ({st.get(&#x27;status&#x27;, &#x27;unknown&#x27;)}).&quot;)
+    return redirect(&quot;orders:order_detail&quot;, order_id=order.pk)
+
+
+@login_required
+@require_GET
+def esewa_failure(request, order_id):
+    order = get_object_or_404(Order, pk=order_id, user=request.user)
+    mark_failed(order.pk)
+    messages.error(request, &quot;eSewa payment was cancelled or failed. You can retry.&quot;)
+    return redirect(&quot;orders:order_detail&quot;, order_id=order.pk)</code></pre></div><div class="cb"><div class="cbh"><span>payments/templates/payments/esewa_redirect.html</span><button class="copy">Copy</button></div><pre><code>{% extends &quot;base.html&quot; %}
+{% block title %}Redirecting to eSewa{% endblock %}
+{% block content %}
+&lt;h1&gt;Redirecting to eSewa…&lt;/h1&gt;
+&lt;form id=&quot;esewa-form&quot; action=&quot;{{ action }}&quot; method=&quot;post&quot;&gt;
+  {% for name, value in fields.items %}
+  &lt;input type=&quot;hidden&quot; name=&quot;{{ name }}&quot; value=&quot;{{ value }}&quot;&gt;
+  {% endfor %}
+  &lt;button type=&quot;submit&quot;&gt;Continue to eSewa&lt;/button&gt;
+&lt;/form&gt;
+&lt;script&gt;document.getElementById(&quot;esewa-form&quot;).submit();&lt;/script&gt;
+{% endblock %}</code></pre></div><h3>Step F — URLs + Pay buttons</h3><div class="cb"><div class="cbh"><span>payments/urls.py</span><button class="copy">Copy</button></div><pre><code>from django.urls import path
+
+from . import views
+
+app_name = &quot;payments&quot;
+
+urlpatterns = [
+    path(&quot;khalti/&lt;int:order_id&gt;/start/&quot;, views.khalti_start, name=&quot;khalti_start&quot;),
+    path(&quot;khalti/return/&quot;, views.khalti_return, name=&quot;khalti_return&quot;),
+    path(&quot;esewa/&lt;int:order_id&gt;/start/&quot;, views.esewa_start, name=&quot;esewa_start&quot;),
+    path(&quot;esewa/success/&quot;, views.esewa_success, name=&quot;esewa_success&quot;),
+    path(&quot;esewa/&lt;int:order_id&gt;/failure/&quot;, views.esewa_failure, name=&quot;esewa_failure&quot;),
+]</code></pre></div><div class="cb"><div class="cbh"><span>config/urls.py</span><button class="copy">Copy</button></div><pre><code>from django.contrib import admin
+from django.urls import include, path
+
+urlpatterns = [
+    path(&quot;admin/&quot;, admin.site.urls),
+    path(&quot;accounts/&quot;, include(&quot;django.contrib.auth.urls&quot;)),
+    path(&quot;accounts/&quot;, include(&quot;accounts.urls&quot;)),
+    path(&quot;cart/&quot;, include(&quot;cart.urls&quot;)),
+    path(&quot;orders/&quot;, include(&quot;orders.urls&quot;)),
+    path(&quot;payments/&quot;, include(&quot;payments.urls&quot;)),
+    path(&quot;&quot;, include(&quot;store.urls&quot;)),               # keep the catch-all LAST
+]</code></pre></div><div class="cb"><div class="cbh"><span>templates/orders/order-detail.html — replace the old &quot;Payment processing will be available soon&quot; block</span><button class="copy">Copy</button></div><pre><code>  {% if order.status == &quot;pending&quot; or order.status == &quot;failed&quot; %}
+    &lt;div class=&quot;info-message&quot;&gt;
+      &lt;h2&gt;Pay Rs. {{ order.total_amount }}&lt;/h2&gt;
+      &lt;form method=&quot;post&quot; action=&quot;{% url &#x27;payments:khalti_start&#x27; order.pk %}&quot; style=&quot;display:inline&quot;&gt;
+        {% csrf_token %}&lt;button type=&quot;submit&quot; class=&quot;btn&quot;&gt;Pay with Khalti&lt;/button&gt;
+      &lt;/form&gt;
+      &lt;form method=&quot;post&quot; action=&quot;{% url &#x27;payments:esewa_start&#x27; order.pk %}&quot; style=&quot;display:inline&quot;&gt;
+        {% csrf_token %}&lt;button type=&quot;submit&quot; class=&quot;btn&quot;&gt;Pay with eSewa&lt;/button&gt;
+      &lt;/form&gt;
+    &lt;/div&gt;
+  {% elif order.status == &quot;paid&quot; %}
+    &lt;div class=&quot;info-message&quot;&gt;&lt;p&gt;Paid on {{ order.paid_at|date:&quot;F d, Y H:i&quot; }} — ref &lt;code&gt;{{ order.payment_ref }}&lt;/code&gt;&lt;/p&gt;&lt;/div&gt;
+  {% endif %}</code></pre></div><div class="note">No migration needed: Day 1 already gave <code>Order</code> the <code>payment_ref</code> and <code>paid_at</code> fields. <code>payment_ref</code> holds the Khalti <code>pidx</code> / eSewa <code>transaction_uuid</code> while pending, and the gateway's transaction id once paid.</div><h3>Step G — Tests (gateways mocked) + real sandbox run</h3><div class="cb"><div class="cbh"><span>payments/tests.py</span><button class="copy">Copy</button></div><pre><code>import base64
+import json
+from decimal import Decimal
+from unittest.mock import patch
+
+from django.contrib.auth import get_user_model
+from django.test import TestCase, override_settings
+from django.urls import reverse
+
+from orders.models import Order
+
+from . import gateways as gw
+
+User = get_user_model()
+
+
+@override_settings(KHALTI_SECRET_KEY=&quot;test&quot;, ESEWA_SECRET_KEY=&quot;8gBm/:&amp;EnhH.1/q&quot;,
+                   ESEWA_PRODUCT_CODE=&quot;EPAYTEST&quot;)
+class PaymentTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(&quot;ram&quot;, password=&quot;pass12345!&quot;)
+        self.other = User.objects.create_user(&quot;shyam&quot;, password=&quot;pass12345!&quot;)
+        self.order = Order.objects.create(user=self.user, full_name=&quot;Ram&quot;, phone=&quot;98&quot;,
+                                          address=&quot;KTM&quot;, total_amount=Decimal(&quot;100.00&quot;))
+        self.client.login(username=&quot;ram&quot;, password=&quot;pass12345!&quot;)
+
+    # ---------- eSewa signature ----------
+    def test_esewa_signature_is_base64_hmac_sha256(self):
+        msg = &quot;total_amount=100,transaction_uuid=11-201-13,product_code=EPAYTEST&quot;
+        import hashlib, hmac
+        expected = base64.b64encode(hmac.new(b&quot;8gBm/:&amp;EnhH.1/q&quot;, msg.encode(),
+                                             hashlib.sha256).digest()).decode()
+        self.assertEqual(gw.esewa_sign(msg), expected)
+
+    def _esewa_data(self, status=&quot;COMPLETE&quot;, amount=&quot;100.0&quot;, tamper=False):
+        p = {&quot;transaction_code&quot;: &quot;000AWEO&quot;, &quot;status&quot;: status, &quot;total_amount&quot;: amount,
+             &quot;transaction_uuid&quot;: self.order.payment_ref, &quot;product_code&quot;: &quot;EPAYTEST&quot;,
+             &quot;signed_field_names&quot;: &quot;transaction_code,status,total_amount,transaction_uuid,&quot;
+                                   &quot;product_code,signed_field_names&quot;}
+        msg = &quot;,&quot;.join(f&quot;{f}={p[f]}&quot; for f in p[&quot;signed_field_names&quot;].split(&quot;,&quot;))
+        p[&quot;signature&quot;] = gw.esewa_sign(msg)
+        if tamper:
+            p[&quot;total_amount&quot;] = &quot;1.0&quot;
+        return base64.b64encode(json.dumps(p).encode()).decode()
+
+    def test_esewa_start_renders_signed_form(self):
+        r = self.client.post(reverse(&quot;payments:esewa_start&quot;, args=[self.order.pk]))
+        self.assertContains(r, &#x27;name=&quot;signature&quot;&#x27;)
+        self.order.refresh_from_db()
+        self.assertTrue(self.order.payment_ref.startswith(f&quot;{self.order.pk}-&quot;))
+
+    @patch(&quot;payments.gateways.esewa_status&quot;, return_value={&quot;status&quot;: &quot;COMPLETE&quot;, &quot;ref_id&quot;: &quot;R1&quot;})
+    def test_esewa_success_marks_paid(self, _):
+        self.client.post(reverse(&quot;payments:esewa_start&quot;, args=[self.order.pk]))
+        self.order.refresh_from_db()
+        self.client.get(reverse(&quot;payments:esewa_success&quot;), {&quot;data&quot;: self._esewa_data()})
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.PAID)
+
+    @patch(&quot;payments.gateways.esewa_status&quot;, return_value={&quot;status&quot;: &quot;COMPLETE&quot;})
+    def test_esewa_tampered_data_rejected(self, _):
+        self.client.post(reverse(&quot;payments:esewa_start&quot;, args=[self.order.pk]))
+        self.order.refresh_from_db()
+        self.client.get(reverse(&quot;payments:esewa_success&quot;), {&quot;data&quot;: self._esewa_data(tamper=True)})
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.PENDING)
+
+    @patch(&quot;payments.gateways.esewa_status&quot;, return_value={&quot;status&quot;: &quot;PENDING&quot;})
+    def test_esewa_valid_signature_but_server_says_pending(self, _):
+        self.client.post(reverse(&quot;payments:esewa_start&quot;, args=[self.order.pk]))
+        self.order.refresh_from_db()
+        self.client.get(reverse(&quot;payments:esewa_success&quot;), {&quot;data&quot;: self._esewa_data()})
+        self.order.refresh_from_db()
+        self.assertNotEqual(self.order.status, Order.Status.PAID)
+
+    # ---------- Khalti ----------
+    @patch(&quot;payments.gateways.khalti_initiate&quot;,
+           return_value={&quot;pidx&quot;: &quot;PX1&quot;, &quot;payment_url&quot;: &quot;https://test-pay.khalti.com/?pidx=PX1&quot;})
+    def test_khalti_start_redirects(self, _):
+        r = self.client.post(reverse(&quot;payments:khalti_start&quot;, args=[self.order.pk]))
+        self.assertEqual(r.status_code, 302)
+        self.assertIn(&quot;khalti.com&quot;, r[&quot;Location&quot;])
+
+    @patch(&quot;payments.gateways.khalti_lookup&quot;,
+           return_value={&quot;status&quot;: &quot;Completed&quot;, &quot;total_amount&quot;: 10000, &quot;transaction_id&quot;: &quot;T1&quot;})
+    def test_khalti_return_verified_marks_paid(self, _):
+        Order.objects.filter(pk=self.order.pk).update(payment_ref=&quot;PX1&quot;)
+        self.client.get(reverse(&quot;payments:khalti_return&quot;), {&quot;pidx&quot;: &quot;PX1&quot;, &quot;status&quot;: &quot;Completed&quot;})
+        self.order.refresh_from_db()
+        self.assertEqual(self.order.status, Order.Status.PAID)
+        self.assertEqual(self.order.payment_ref, &quot;T1&quot;)
+
+    @patch(&quot;payments.gateways.khalti_lookup&quot;,
+           return_value={&quot;status&quot;: &quot;Completed&quot;, &quot;total_amount&quot;: 100, &quot;transaction_id&quot;: &quot;T1&quot;})
+    def test_khalti_amount_mismatch_not_paid(self, _):
+        Order.objects.filter(pk=self.order.pk).update(payment_ref=&quot;PX1&quot;)
+        self.client.get(reverse(&quot;payments:khalti_return&quot;), {&quot;pidx&quot;: &quot;PX1&quot;})
+        self.order.refresh_from_db()
+        self.assertNotEqual(self.order.status, Order.Status.PAID)
+
+    @patch(&quot;payments.gateways.khalti_lookup&quot;, return_value={&quot;status&quot;: &quot;User canceled&quot;})
+    def test_fake_redirect_status_is_ignored(self, _):
+        Order.objects.filter(pk=self.order.pk).update(payment_ref=&quot;PX1&quot;)
+        self.client.get(reverse(&quot;payments:khalti_return&quot;), {&quot;pidx&quot;: &quot;PX1&quot;, &quot;status&quot;: &quot;Completed&quot;})
+        self.order.refresh_from_db()
+        self.assertNotEqual(self.order.status, Order.Status.PAID)
+
+    def test_other_user_cannot_pay_my_order(self):
+        self.client.login(username=&quot;shyam&quot;, password=&quot;pass12345!&quot;)
+        r = self.client.post(reverse(&quot;payments:khalti_start&quot;, args=[self.order.pk]))
+        self.assertEqual(r.status_code, 404)
+
+    def test_start_requires_post(self):
+        r = self.client.get(reverse(&quot;payments:esewa_start&quot;, args=[self.order.pk]))
+        self.assertEqual(r.status_code, 405)</code></pre></div><div class="cb"><div class="cbh"><span>terminal</span><button class="copy">Copy</button></div><pre><code>python manage.py check
+python manage.py test            # expect: Ran 19 tests ... OK
+python manage.py runserver
+# 1) add to cart -&gt; checkout -&gt; order page -&gt; Pay with Khalti -&gt; pay with test ID/MPIN 1111/OTP 987654
+# 2) new order -&gt; Pay with eSewa -&gt; 9806800001 / Nepal@123 / token 123456
+# 3) Admin: both orders show status=paid, payment_ref set, paid_at set</code></pre></div><div class="note"><b>Prove the security point yourself:</b> after a Khalti payment is <i>cancelled</i>, paste <code>/payments/khalti/return/?pidx=&lt;that pidx&gt;&amp;status=Completed</code> into the address bar. The order must <b>not</b> become paid — lookup says otherwise. For eSewa, base64-decode a real <code>?data=</code>, change <code>total_amount</code>, re-encode, and load it: "signature mismatch".</div><h2>PART 2 — Explanations, Checks &amp; Reflection</h2><h3>1. Never trust the redirect</h3><p>The browser redirect (<code>?status=Completed</code>) is user-controlled input — anyone can type it. It only tells your server <i>which</i> transaction to check. Proof comes from a server-to-server call: Khalti <code>/epayment/lookup/</code> or eSewa <code>/transaction/status/</code>, made with your secret key over HTTPS.</p><h3>2. What HMAC proves (and doesn't)</h3><p>eSewa signs <code>total_amount,transaction_uuid,product_code</code> (and more on the response) with a shared secret. A matching signature proves the data <b>came from someone holding the secret and was not modified</b>. It does <b>not</b> prove the money settled, and it does not stop a replay of an old valid message — that's why we also call the status API and check the order is not already paid. Use <code>hmac.compare_digest</code>, not <code>==</code>, to avoid timing leaks.</p><h3>3. Amount check</h3><p>Verifying "Completed" is not enough: a user could pay Rs. 1 for a different pidx/uuid. Always compare the gateway's amount with <code>order.total_amount</code> (Khalti in <b>paisa</b>: Rs. 100 = 10000).</p><h3>4. Idempotency</h3><p>Users refresh, gateways retry. <code>mark_paid</code> locks the row with <code>select_for_update()</code> inside <code>atomic()</code> and returns early if already paid, so the state change happens exactly once.</p><h3>5. Why start payment with POST</h3><p>Starting a payment changes state (stores a new <code>payment_ref</code>). GET must be safe; POST + <code>{% csrf_token %}</code> stops another site from triggering it. The return URLs are GET because the gateways redirect that way — and they are safe because they only <i>verify</i>.</p><h3>6. IDOR again</h3><p>Every lookup filters by <code>user=request.user</code>. Another user's order id → 404, same pattern as Day 4. The return views find the order by <code>payment_ref</code> <b>and</b> owner.</p><h3>7. Khalti vs eSewa</h3><p>Khalti: JSON API, server initiates and gets a <code>payment_url</code>; verify with lookup. eSewa: browser POSTs a signed HTML form; response is base64 JSON with a signature; verify signature + status API. Khalti is simpler; eSewa teaches HMAC directly. Keep both or delete one app route later.</p><h3>8. Django vs ASP.NET Core MVC</h3><p>Django has no built-in <code>HttpClientFactory</code>; <code>requests</code> + a module-level service is the idiom. <code>@require_POST</code> ≈ <code>[HttpPost]</code>; <code>{% csrf_token %}</code> ≈ <code>[ValidateAntiForgeryToken]</code> (but Django enforces it globally by middleware). <code>select_for_update</code> ≈ <code>UPDLOCK</code> hint / EF transaction.</p><h3>Common errors</h3><table><tr><th>Error</th><th>Fix</th></tr><tr><td>Khalti 401 "Invalid token"</td><td>Wrong/empty <code>KHALTI_SECRET_KEY</code>; header must be <code>Key &lt;secret&gt;</code>; restart runserver after editing .env</td></tr><tr><td>Khalti 400 amount</td><td>Amount must be int paisa ≥ 1000 (Rs. 10)</td></tr><tr><td>eSewa "Invalid payload signature"</td><td>Signed <code>total_amount</code> string must equal the posted one exactly (we send <code>100.00</code> in both)</td></tr><tr><td>NoReverseMatch payments:...</td><td><code>payments/urls.py</code> missing <code>app_name</code> or not included in <code>config/urls.py</code></td></tr><tr><td>decouple UndefinedValueError SECRET_KEY</td><td>.env not in the folder with manage.py</td></tr><tr><td>UnicodeDecodeError on pip install -r</td><td>requirements.txt is UTF-16 — regenerate with <code>pip freeze &gt; requirements.txt</code></td></tr></table><h3>9. Blank-Page Test (do 4 of 5 without peeking)</h3><ol><li>Write <code>esewa_sign(message)</code> from memory.</li><li>Write the Khalti lookup check including the paisa amount comparison.</li><li>Explain why <code>?status=Completed</code> is ignored.</li><li>Write idempotent <code>mark_paid</code> with <code>select_for_update</code>.</li><li>Write a test proving a tampered eSewa payload is rejected.</li></ol><div class="cb"><div class="cbh"><span>terminal — commit</span><button class="copy">Copy</button></div><pre><code>git add payments config templates requirements.txt
+git status                      # make sure .env is NOT listed
+git commit -m &quot;Day 5: Khalti + eSewa integration with server-side verification&quot;
+git push</code></pre></div><div class="cb"><div class="cbh"><span>LEARNING.md entry</span><button class="copy">Copy</button></div><pre><code>## Day 5 - Gateway integration
+- Built: ...
+- Time planned vs actual per block: ...
+- Hardest part / what broke and why: ...
+- Django-specific (decouple settings, require_POST, select_for_update, mock.patch): ...
+- Transferable (HMAC, server-side verification, idempotency, amount checks, replay): ...
+- Gateway I will keep (Khalti / eSewa) and why: ...
+- Surprised me vs ASP.NET Core MVC: ...
+- Blank-Page Test result: x/5</code></pre></div><div class="note"><b>Done when:</b> Pay buttons appear on pending/failed orders • start views are POST + owner-only • Khalti paid only after lookup = Completed and amount matches • eSewa paid only after signature + status API = COMPLETE and amount matches • forged/ tampered redirects rejected • double callback is harmless • 19 tests pass • one real sandbox payment per gateway • .env not committed • pushed • LEARNING.md updated. <b>Next — Day 6:</b> order history, admin customization (payment status filters), restock on failed/cancelled orders, polish &amp; demo.</div><script>document.querySelectorAll(".copy").forEach(b=>b.onclick=async()=>{const t=b.closest(".cb").querySelector("code").innerText;
+try{await navigator.clipboard.writeText(t)}catch(e){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();document.execCommand("copy");a.remove()}
+b.textContent="Copied!";b.classList.add("ok");setTimeout(()=>{b.textContent="Copy";b.classList.remove("ok")},1500)});</script></body></html>
